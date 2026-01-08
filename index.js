@@ -21,34 +21,34 @@ import wishlistRoutes from "./src/app/route/wishlistRoutes.js"
 import cors from "cors";
 dotenv.config();
 const app = express();
-// app.use(cors({ origin: "*" }))
+app.use(cors({ origin: "*" }))
 app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
 connectDB();
-// app.use(express.json({ limit: "100mb" }));
+app.use(express.json({ limit: "100mb" }));
 
 // CORS
-// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-// app.use((req, res, next) => {
-//   res.header("Access-Control-Allow-Origin", "*");
-//   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-//   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-//   if (req.method === "OPTIONS") return res.sendStatus(200);
-//   next();
-// });
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  if (req.method === "OPTIONS") return res.sendStatus(200);
+  next();
+});
 app.get("/", (req, res) => {
   res.json({ message: "E-commerce API Running on railway", uptime: process.uptime() });
 });
-// app.use("/api/categories", categoryRoutes);
-// app.use("/api/store", StoreRoute);
-// app.use("/api/tags", tagRoutes);
-// app.use("/api/reviews", reviewRoutes);  
-// app.use("/api/users", userRoute);
+app.use("/api/categories", categoryRoutes);
+app.use("/api/store", StoreRoute);
+app.use("/api/tags", tagRoutes);
+app.use("/api/reviews", reviewRoutes);  
+app.use("/api/users", userRoute);
 app.use("/api/products", productRoutes);
-// app.use("/api/cart", cartRoute);
-// app.use("/api/wishlist", wishlistRoutes);
-// app.use("/api/orders", orderRoutes);
-// app.use("/api/riders", riderRoutes);
+app.use("/api/cart", cartRoute);
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/riders", riderRoutes);
 app.listen(process.env.PORT, () => console.log(`Server running on port ${process.env.PORT}`));
