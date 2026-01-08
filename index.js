@@ -1,19 +1,19 @@
 import express from "express";
-// import"./src/app/Config/cloudinary.js"; 
-// import dotenv from "dotenv";
-// dotenv.config();
-// import connectDB from "./src/app/connection/db.js"; // import connection
-// import productRoutes from "./src/app/route/ProductRoute.js";
-// import categoryRoutes from "./src/app/route/CategoryRoute.js";
-// import StoreRoute from "./src/app/route/StoreRoute.js";
-// import tagRoutes from "./src/app/route/tagRoute.js";
-// import reviewRoutes from "./src/app/route/ReviewRoute.js";
-// import userRoute from "./src/app/route/UserRute.js";
-// import cartRoute from "./src/app/route/cartRoute.js";
-// import orderRoutes from "./src/app/route/orderRoutes.js";
-// import riderRoutes from "./src/app/route/ReviewRoute.js";
-// import wishlistRoutes from "./src/app/route/wishlistRoutes.js"
+import"./src/app/Config/cloudinary.js"; 
 import dotenv from "dotenv";
+dotenv.config();
+import connectDB from "./src/app/connection/db.js"; // import connection
+import productRoutes from "./src/app/route/ProductRoute.js";
+import categoryRoutes from "./src/app/route/CategoryRoute.js";
+import StoreRoute from "./src/app/route/StoreRoute.js";
+import tagRoutes from "./src/app/route/tagRoute.js";
+import reviewRoutes from "./src/app/route/ReviewRoute.js";
+import userRoute from "./src/app/route/UserRute.js";
+import cartRoute from "./src/app/route/cartRoute.js";
+import orderRoutes from "./src/app/route/orderRoutes.js";
+import riderRoutes from "./src/app/route/ReviewRoute.js";
+import wishlistRoutes from "./src/app/route/wishlistRoutes.js"
+
 
 // import swaggerUi from "swagger-ui-express";
 // import swaggerSpec from "./src/app/Config/swagger.js";
@@ -26,7 +26,7 @@ app.use(express.json());
 
 app.use(express.urlencoded({ extended: true }));
 
-// connectDB();
+connectDB();
 // app.use(express.json({ limit: "100mb" }));
 
 // CORS
@@ -46,7 +46,7 @@ app.get("/", (req, res) => {
 // app.use("/api/tags", tagRoutes);
 // app.use("/api/reviews", reviewRoutes);  
 // app.use("/api/users", userRoute);
-// app.use("/api/products", productRoutes);
+app.use("/api/products", productRoutes);
 // app.use("/api/cart", cartRoute);
 // app.use("/api/wishlist", wishlistRoutes);
 // app.use("/api/orders", orderRoutes);
