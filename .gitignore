@@ -1,12 +1,10 @@
 # Dependencies
 node_modules/
-
 # Build outputs
 dist/
 build/
 .next/        # if using Next.js
 out/          # if using Next.js or Vite
-
 # Environment variables
 .env
 .env.local

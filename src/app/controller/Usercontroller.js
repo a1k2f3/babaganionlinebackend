@@ -87,12 +87,24 @@ export const loginUser = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase() }).select("+password");
 
-    if (!user || !(await user.matchPassword(password))) {
+    if (!user) {
       return res.status(401).json({ success: false, message: "Invalid credentials" });
     }
 
-    const accessToken = generateAccessToken(user._id, user.role);
-    const refreshToken = generateRefreshToken(user._id, user.role);
+    // Add safety check
+    if (!user.matchPassword) {
+      console.error("matchPassword method missing on user", user);
+      return res.status(500).json({ success: false, message: "Server configuration error" });
+    }
+
+    const isPasswordValid = await user.matchPassword(password);
+
+    if (!isPasswordValid) {
+      return res.status(401).json({ success: false, message: "Invalid credentials" });
+    }
+
+    const accessToken = generateAccessToken(user._id, user.role || "customer");
+    const refreshToken = generateRefreshToken(user._id, user.role || "customer");
 
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
@@ -111,11 +123,17 @@ export const loginUser = async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        role: user.role,
+        role: user.role || "customer",
       },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: "Server error" });
+    console.error("Login error:", error); // ← THIS IS CRITICAL
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      // Optional: include error message in development
+      ...(process.env.NODE_ENV === "development" && { error: error.message }),
+    });
   }
 };
 
