@@ -21,7 +21,7 @@ import swaggerSpec from "./src/app/Config/swagger.js";
 import cors from "cors";
 dotenv.config();
 const app = express();
-const allowedOrigins = ["https://www.babaganionline.com", "https://babaganionline.vercel.app", "http://localhost:3000","http://localhost:3001","https://sellercenter-buybot.vercel.app/","http://localhost:3002"];
+const allowedOrigins = ["https://www.babaganionline.com", "https://babaganionline.vercel.app", "http://localhost:3000","http://localhost:3001","https://sellercenter-buybot.vercel.app","http://localhost:3002"];
 
 app.use(cors({
   origin: function (origin, callback) {
