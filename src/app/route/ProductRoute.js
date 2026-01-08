@@ -19,7 +19,7 @@ import { uploadProductMedia } from "../middleware/upload.js";
 const router = express.Router();
 // CREATE Product with multiple images
 import { protect } from "../middleware/Usermiddleware.js";
-router.use(protect);
+// router.use(protect);
 router.post("/", uploadProductMedia,createProduct);
 
 router.post("/bulkproduct", uploadProductMedia, bulkCreateProducts);
