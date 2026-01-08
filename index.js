@@ -15,8 +15,8 @@ import riderRoutes from "./src/app/route/ReviewRoute.js";
 import wishlistRoutes from "./src/app/route/wishlistRoutes.js"
 
 
-// import swaggerUi from "swagger-ui-express";
-// import swaggerSpec from "./src/app/Config/swagger.js";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./src/app/Config/swagger.js";
 
 import cors from "cors";
 dotenv.config();
