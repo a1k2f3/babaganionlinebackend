@@ -6,6 +6,8 @@ import {
 } from "../controller/wishlistController.js";
 
 const router = express.Router();
+import { protect } from "../middleware/Usermiddleware.js";  
+router.use(protect);
 
 // Get wishlist of a user
 router.get("/:userId", getWishlist);
