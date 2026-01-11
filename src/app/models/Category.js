@@ -48,14 +48,13 @@ const categorySchema = new mongoose.Schema(
 );
 
 // Generate slug automatically
-categorySchema.pre("save", function (next) {
+categorySchema.pre("save", function () {
   if (this.isModified("name") || !this.slug) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
   }
-  next();
 });
 
 // Virtual: Populate all products belonging to this category
