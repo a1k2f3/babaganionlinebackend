@@ -29,10 +29,15 @@ export const createOrder = async (req, res) => {
       storeId: item.storeId,
       quantity: item.quantity,
       price: item.productId.price,
+      discountPrice: item.productId.discountPrice
     }));
 
     const totalAmount = orderItems.reduce(
       (acc, item) => acc + item.quantity * item.price,
+      0
+    );
+    const discountAmount = orderItems.reduce(
+      (acc, item) => acc + item.quantity * (item.productId.discountPrice || 0),
       0
     );
 
@@ -77,7 +82,7 @@ export const getUserOrders = async (req, res) => {
   try {
     const userId = req.query.userId;
 
-    const orders = await Order.find({ userId }).populate('items.storeId','name address city contactNumber' ).populate("items.productId","name price images description ").sort({ createdAt: -1 });
+    const orders = await Order.find({ userId }).populate('items.storeId','name address city contactNumber' ).populate("items.productId","name price discountPrice images description ").sort({ createdAt: -1 });
   
     res.json(orders);
 
@@ -92,7 +97,7 @@ export const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
       .populate("userId", "name email phone") // 🧑 Works fine (top-level)
-      .populate("items.storeId", "name address contactNumber").populate("items.productId","name price thumbnail description ").sort({ createdAt: -1 }); // 🏬 Correct path for nested storeId
+      .populate("items.storeId", "name address contactNumber").populate("items.productId","name price discountPrice thumbnail description ").sort({ createdAt: -1 }); // 🏬 Correct path for nested storeId
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -112,7 +117,7 @@ export const getOrdersByStoreId = async (req, res) => {
     })
       .populate({
         path: "items.productId",
-        select: "name price images", // populate only needed product fields
+        select: "name price discountPrice images", // populate only needed product fields
       })
       .populate("userId", "name email phone") // optional: populate user info
       .sort({ createdAt: -1 }); // newest first
@@ -164,7 +169,7 @@ export const getOrderDetailById = async (req, res) => {
     })
       .populate({
         path: "items.productId",
-        select: "name price images description", // populate product details
+        select: "name price discountPrice images description", // populate product details
       })
       .populate("userId", "name email phone");
 

@@ -29,7 +29,10 @@ size: { type: String },
       type: Number,
       required: true,
     },
-   
+   disCountamount: {
+      type: Number,
+      default: 0,
+    },
 
     shippingAddress: {
   name: { type: String, required: true },
