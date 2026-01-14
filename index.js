@@ -13,7 +13,7 @@ import cartRoute from "./src/app/route/cartRoute.js";
 import orderRoutes from "./src/app/route/orderRoutes.js";
 import riderRoutes from "./src/app/route/ReviewRoute.js";
 import wishlistRoutes from "./src/app/route/wishlistRoutes.js"
-
+import discountRoutes from "./src/app/route/discountroute.js";
 
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./src/app/Config/swagger.js";
@@ -61,4 +61,5 @@ app.use("/api/cart", cartRoute);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/riders", riderRoutes);
+app.use("/api/discounts", discountRoutes);
 app.listen(process.env.PORT, () => console.log(`Server running on port ${process.env.PORT}`));

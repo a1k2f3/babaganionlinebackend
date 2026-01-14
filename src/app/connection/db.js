@@ -1,21 +1,28 @@
 // db/connectDB.js
 import mongoose from "mongoose";
+import dns from "dns";
+import dotenv from "dotenv";
+dotenv.config();
+
+dns.setDefaultResultOrder("ipv4first");
 
 const connectDB = async () => {
-  // If already connected → reuse (prevents timeout on cold start)
-  if (mongoose.connections[0].readyState) {
-    console.log("Using existing MongoDB connection");
-    return;
-  }
-
   try {
-    await mongoose.connect(process.env.MONGO_URI);
-    console.log()
+    // Reuse existing connection (important for nodemon & serverless)
+    if (mongoose.connection.readyState === 1) {
+      console.log("Using existing MongoDB connection");
+      return;
+    }
+
+    await mongoose.connect(process.env.MONGO_URI, {
+      serverSelectionTimeoutMS: 5000, // stop hanging
+      socketTimeoutMS: 45000,
+    });
+
     console.log("MongoDB Connected Successfully");
   } catch (err) {
     console.error("MongoDB Connection Failed:", err.message);
-    // Don't crash the serverless function
-    throw err;
+    throw err; // let app decide what to do
   }
 };
 

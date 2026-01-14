@@ -1023,3 +1023,106 @@ export const deleteProduct = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+export const applyDiscountToAll = async (req, res) => {
+    try {
+        const { discountPercentage } = req.body;
+
+        // Validation
+        if (
+            discountPercentage === undefined ||
+            discountPercentage === null ||
+            typeof discountPercentage !== 'number' ||
+            discountPercentage < 0 ||
+            discountPercentage > 100
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'Please provide a valid discount percentage (number between 0 and 100)'
+            });
+        }
+
+        // Prevent division by zero & very small prices issues
+        if (discountPercentage === 100) {
+            // Special case: 100% discount → free product
+            const result = await Product.updateMany(
+                { status: 'active', price: { $gt: 0 } },
+                { $set: { discountPrice: 0 } }
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: `100% discount applied → ${result.modifiedCount} products set to free (discountPrice = 0)`,
+                matchedCount: result.matchedCount,
+                modifiedCount: result.modifiedCount
+            });
+        }
+
+        const multiplier = 1 - discountPercentage / 100;
+
+       const result = await Product.updateMany(
+  {
+    status: 'active',
+    price: { $gt: 0 }
+  },
+  [
+    {
+      $set: {
+        discountPrice: {
+          $cond: {
+            if: { $gt: ['$price', 0] },
+            then: { $round: [{ $multiply: ['$price', multiplier] }, 0] },
+            else: null
+          }
+        }
+      }
+    }
+  ],
+  { updatePipeline: true }   // ← this is the key line!
+);
+
+        return res.status(200).json({
+            success: true,
+            message: `Discount of ${discountPercentage}% applied successfully`,
+            affectedProducts: result.modifiedCount,
+            matchedProducts: result.matchedCount,
+            details: {
+                discountPercentage,
+                effectiveMultiplier: multiplier.toFixed(2),
+                priceRoundedTo: 'whole number'
+            }
+        });
+
+    } catch (error) {
+        console.error('Error applying bulk discount:', error);
+
+        return res.status(500).json({
+            success: false,
+            message: 'Server error while applying discount to products',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+};
+
+// Remove discount from all products
+export const removeDiscountFromAll = async (req, res) => {
+  try {
+    const result = await Product.updateMany(
+      {},
+      { $set: { discountPrice: null } }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `Discount removed from ${result.modifiedCount} products`,
+      modifiedCount: result.modifiedCount
+    });
+
+  } catch (error) {
+    console.error('Error removing discounts:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Server error while removing discounts',
+      error: error.message
+    });
+  }
+};

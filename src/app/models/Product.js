@@ -18,7 +18,6 @@
         default: "active",
       },
       sku: { type: String, unique: true, sparse: true },
-
       // Images: array of objects with url and public_id (e.g., from Cloudinary)
       images: [
         {
@@ -26,7 +25,6 @@
           public_id: { type: String, required: true },
         },
       ],
-
       thumbnail: { type: String }, // Auto-set to first image.url if needed
 
       // Videos: similar structure to images
