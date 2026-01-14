@@ -28,6 +28,10 @@ const cartSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  totalDiscount: {
+    type: Number,
+    default: 0,
+  },
 });
 
 export default mongoose.model("Cart", cartSchema);

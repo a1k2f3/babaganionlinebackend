@@ -7,70 +7,150 @@ import Product from "../models/Product.js";
 
 export const addToCart = async (req, res) => {
   try {
-    const userId = req.query.userId;
+    const { userId } = req.query;
     const { productId, storeId, quantity = 1, size } = req.body;
 
-    // Validation
-    if (!userId) return res.status(400).json({ message: "User ID is required" });
-    if (!productId || !storeId)
-      return res.status(400).json({ message: "Product ID & Store ID are required" });
-
-    // Optional: Validate that size is provided for products that need it
-    // You can enhance this later by checking product category or a flag in Product model
-    // if (!size) return res.status(400).json({ message: "Size is required for this product" });
-
-    // Fetch the product and validate storeId
-    const product = await Product.findById(productId);
-    if (!product) {
-      return res.status(404).json({ message: "Product not found" });
-    }
-    if (product.brand._id?.toString() !== storeId) {
-      return res.status(404).json({ message: "Product not found in this store" });
+    // ── Validation ─────────────────────────────────────────────
+    if (!userId) {
+      return res.status(400).json({ success: false, message: "User ID is required" });
     }
 
-    // Find or create cart
-    let cart = await Cart.findOne({ userId });
-    if (!cart) {
-      cart = new Cart({ userId, items: [], totalPrice: 0 });
-    }
-
-    // Check if the same product + store + size already exists in cart
-    const existingItemIndex = cart.items.findIndex(
-      (item) =>
-        item.productId.toString() === productId &&
-        item.storeId.toString() === storeId &&
-        item.size?.toString() === size?.toString() // size comparison (case-sensitive)
-    );
-
-    if (existingItemIndex > -1) {
-      // Same product, store, and size → increase quantity
-      cart.items[existingItemIndex].quantity += quantity;
-    } else {
-      // New item (different size or first time)
-      cart.items.push({
-        productId,
-        storeId,
-        size,              // <-- new field
-        quantity,
+    if (!productId || !storeId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Product ID and Store ID are required" 
       });
     }
 
-    // Recalculate totalPrice
-    let total = 0;
-    for (let item of cart.items) {
-      const itemProduct = await Product.findById(item.productId);
-      if (itemProduct) {
-        total += item.quantity * itemProduct.price;
-      }
+    // Validate IDs format
+    if (!mongoose.Types.ObjectId.isValid(productId) || 
+        !mongoose.Types.ObjectId.isValid(storeId)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Invalid Product or Store ID format" 
+      });
     }
-    cart.totalPrice = total;
+
+    // ── Find Product ───────────────────────────────────────────
+    const product = await Product.findById(productId)
+      .select('price discountPrice brand') // we only need these fields
+      .lean();
+
+    if (!product) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Product not found" 
+      });
+    }
+
+    if (product.brand?.toString() !== storeId) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Product does not belong to this store" 
+      });
+    }
+
+    // ── Determine effective price ──────────────────────────────
+    const effectivePrice = 
+      product.discountPrice && 
+      product.discountPrice > 0 && 
+      product.discountPrice < product.price
+        ? product.discountPrice
+        : product.price;
+
+    // ── Find or create user's cart ─────────────────────────────
+    let cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      cart = new Cart({
+        userId,
+        items: [],
+        totalPrice: 0,
+        totalDiscountedPrice: 0, // optional: track separately
+      });
+    }
+
+    // ── Check if item already exists (same product + store + size) ──
+    const existingItemIndex = cart.items.findIndex(item => 
+      item.productId.toString() === productId &&
+      item.storeId.toString() === storeId &&
+      // Handle size comparison safely (null/undefined/empty string)
+      (item.size || null) === (size || null)
+    );
+
+    if (existingItemIndex > -1) {
+      // Update existing item
+      cart.items[existingItemIndex].quantity += Number(quantity);
+    } else {
+      // Add new item
+      cart.items.push({
+        productId,
+        storeId,
+        size: size || undefined,     // keep undefined if no size
+        quantity: Number(quantity),
+      });
+    }
+
+    // ── Recalculate totals ─────────────────────────────────────
+    let subtotal = 0;
+    let discountedTotal = 0;
+
+    // Better approach: populate products in one query instead of loop
+    const productIds = [...new Set(cart.items.map(i => i.productId))];
+    const productsMap = await Product.find({ _id: { $in: productIds } })
+      .select('price discountPrice')
+      .lean()
+      .then(docs => 
+        docs.reduce((map, p) => {
+          map[p._id.toString()] = p;
+          return map;
+        }, {})
+      );
+
+    for (const item of cart.items) {
+      const prod = productsMap[item.productId.toString()];
+      if (!prod) continue; // product was deleted meanwhile
+
+      const itemPrice = prod.price || 0;
+      const itemDiscountPrice = 
+        prod.discountPrice && prod.discountPrice < itemPrice 
+          ? prod.discountPrice 
+          : itemPrice;
+
+      subtotal += item.quantity * itemPrice;
+      discountedTotal += item.quantity * itemDiscountPrice;
+    }
+
+    // You can choose which total to save
+    // Option A: Save discounted price as main total (most common in e-commerce)
+    // cart.totalPrice = discountedTotal;
+
+    // Option B: Save original total + separate discount field
+    cart.totalPrice = subtotal;
+    cart.totalDiscount = subtotal - discountedTotal;
 
     await cart.save();
 
-    res.status(200).json({ message: "Item added to cart successfully", cart });
+    // ── Response ───────────────────────────────────────────────
+    return res.status(200).json({
+      success: true,
+      message: "Item added to cart successfully",
+      cart: {
+        _id: cart._id,
+        items: cart.items,
+        totalPrice: cart.totalPrice,
+        // Optional: include more info
+        itemCount: cart.items.reduce((sum, i) => sum + i.quantity, 0),
+      }
+    });
+
   } catch (error) {
     console.error("Add to cart error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    return res.status(500).json({
+      success: false,
+      message: "Server error while adding to cart",
+      error: error.message
+    });
   }
 };
 
