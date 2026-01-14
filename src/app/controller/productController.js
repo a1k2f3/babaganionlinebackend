@@ -350,6 +350,7 @@ export const getRandomProducts = async (req, res) => {
       name: product.name,
       slug: product.slug,
       price: product.price,
+      discountPrice: product.discountPrice,
       thumbnail: product.thumbnail,
       images: product.images?.slice(0, 1),
       rating: product.rating,
