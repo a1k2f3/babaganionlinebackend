@@ -36,15 +36,17 @@ export const createOrder = async (req, res) => {
       (acc, item) => acc + item.quantity * item.price,
       0
     );
-    const discountAmount = orderItems.reduce(
-      (acc, item) => acc + item.quantity * (item.productId.discountPrice || 0),
-      0
-    );
+    const discountAmount = orderItems.reduce((acc, item) => {
+  // 0 if discountPrice is missing / null / undefined
+  const discountPerUnit = Number(item.discountPrice) || 0;
+  return acc + item.quantity * discountPerUnit;
+}, 0);
 
     const newOrder = new Order({
       userId,
       items: orderItems,
       totalAmount,
+      disCountamount: discountAmount,
       shippingAddress,
       paymentMethod,
       size: orderItems.size

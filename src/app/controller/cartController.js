@@ -1,7 +1,7 @@
 import Cart from "../models/Cart.js";
 import Store from "../models/Store.js";
 import User from "../models/User.js";
-
+import mongoose from "mongoose";
 // ➕ Add item to cart
 import Product from "../models/Product.js";
 
