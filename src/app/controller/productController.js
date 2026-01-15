@@ -629,6 +629,7 @@ export const getProductById = async (req, res) => {
               name: 1,
               slug: 1,
               price: 1,
+              discountPrice: 1,
               currency: 1,
               thumbnail: 1,
               images: { $slice: ["$images", 1] },
