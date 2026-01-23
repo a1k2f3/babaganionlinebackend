@@ -16,7 +16,7 @@ import {
   getProductsByCategorySlug,
   applyDiscountToAll,
   removeDiscountFromAll,
-  getNewProductsRandomSimple
+  getNewProductsLastTwoDaysRandom
 } from "../controller/productController.js";
 import { uploadProductMedia } from "../middleware/upload.js";
 const router = express.Router();
@@ -41,7 +41,7 @@ router.get("/search/suggestions", getSearchSuggestions);
 router.get("/getstoreproducts", getProductsByBrand);
 router.get("/suggestions", getSearchSuggestions);
 router.patch("/:id/status", updateProductStatus);
-router.get("/newproduct", getNewProductsRandomSimple);
+router.get('/new/arrival', getNewProductsLastTwoDaysRandom);
 router.put("/bulk-discount/apply",applyDiscountToAll);
 router.delete("/bulk-discount/remove",removeDiscountFromAll);
 export default router;
