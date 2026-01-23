@@ -455,35 +455,52 @@ export const getProductsByTag = async (req, res) => {
 export const getNewProductsLastTwoDaysRandom = async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 12;
-
-    // Fixed: last 48 hours (2 days)
     const since = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 
-    const products = await Product.find({
-      createdAt: { $gte: since },
-      status: "active"
-    })
-      .sort({ createdAt: -1 })           // newer first before shuffling
-      .limit(300)                        // safety cap — prevents issues with very large result sets
+    const products = await Product.find(
+      {
+        createdAt: { $gte: since },
+        status: "active"
+      },
+      {
+        // Only list what you WANT (inclusions)
+        name: 1,
+        price: 1,
+        discountPrice: 1,
+        currency: 1,
+        stock: 1,
+        thumbnail: 1,
+        images: { $slice: 1 },     // first 3 images only
+        category: 1,
+        brand: 1,
+        tags: 1,
+        sku: 1,
+        createdAt: 1,
+
+        // You can safely add -_id if you don't want the ID
+        _id: 0   // ← allowed exception
+      }
+    )
+      .sort({ createdAt: -1 })
+      .limit(300)
       .lean();
 
-    // Fisher-Yates shuffle (modern version)
+    // Fisher-Yates shuffle
     for (let i = products.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [products[i], products[j]] = [products[j], products[i]];
     }
 
-    // Take only the requested number (or all if fewer exist)
     const randomized = products.slice(0, limit);
 
     res.json({
       success: true,
       count: randomized.length,
-      daysBack: 2,                    // fixed value — for frontend clarity
+      daysBack: 2,
       products: randomized
     });
   } catch (err) {
-    console.error(err);
+    console.error("getNewProductsLastTwoDaysRandom error:", err);
     res.status(500).json({
       success: false,
       message: "Server error",
