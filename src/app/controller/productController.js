@@ -452,7 +452,45 @@ export const getProductsByTag = async (req, res) => {
     });
   }
 };
+export const getNewProductsLastTwoDaysRandom = async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 12;
 
+    // Fixed: last 48 hours (2 days)
+    const since = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
+    const products = await Product.find({
+      createdAt: { $gte: since },
+      status: "active"
+    })
+      .sort({ createdAt: -1 })           // newer first before shuffling
+      .limit(300)                        // safety cap — prevents issues with very large result sets
+      .lean();
+
+    // Fisher-Yates shuffle (modern version)
+    for (let i = products.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [products[i], products[j]] = [products[j], products[i]];
+    }
+
+    // Take only the requested number (or all if fewer exist)
+    const randomized = products.slice(0, limit);
+
+    res.json({
+      success: true,
+      count: randomized.length,
+      daysBack: 2,                    // fixed value — for frontend clarity
+      products: randomized
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: err.message
+    });
+  }
+};
 export const getProductsByCategorySlug = async (req, res) => {
   try {
     const { slug } = req.params;
