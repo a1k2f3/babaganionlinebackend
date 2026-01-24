@@ -18,7 +18,7 @@ import userRoute from "./src/app/route/UserRute.js";
 import cartRoute from "./src/app/route/cartRoute.js";
 import orderRoutes from "./src/app/route/orderRoutes.js";
 import wishlistRoutes from "./src/app/route/wishlistRoutes.js";
-import riderRoutes from "./src/app/route/RiderRoute.js";
+import riderRoutes from "./src/app/route/riderRoute.js";
 
 // Swagger
 import swaggerUi from "swagger-ui-express";
