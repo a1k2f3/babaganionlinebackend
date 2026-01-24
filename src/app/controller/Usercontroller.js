@@ -2,6 +2,8 @@ import User from "../models/User.js";
 import Store from "../models/Store.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // import asyncHandler from "express-async-handler";
 // const JWT_SECRET = "your_jwt_secret_key"; // You can move this to .env
 import { generateAccessToken, generateRefreshToken } from "../utils/generateToken.js";
@@ -245,5 +247,57 @@ export const deleteUser = async (req, res) => {
     res.status(200).json({ message: "User deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server Error", error: error.message });
+  }
+};
+export const googleLogin = async (req, res) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ message: "ID token is required" });
+    }
+
+    // Verify token with Google
+    const ticket = await client.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { email, name } = payload;
+
+    // Check if user already exists
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // Create new user (password not required for Google users)
+      user = await User.create({
+        name,
+        email,
+        phone: "google-user",
+        password: Math.random().toString(36).slice(-8), // dummy password
+      });
+    }
+
+    // Generate JWT
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      success: true,
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+      },
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(401).json({ message: "Google login failed" });
   }
 };
