@@ -478,7 +478,7 @@ export const getNewProductsLastTwoDaysRandom = async (req, res) => {
         createdAt: 1,
 
         // You can safely add -_id if you don't want the ID
-        _id: 0   // ← allowed exception
+        _id: 1   // ← allowed exception
       }
     )
       .sort({ createdAt: -1 })
