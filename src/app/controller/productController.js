@@ -174,14 +174,24 @@ export const createProduct = async (req, res) => {
     }
 
     // Handle size array
-    let sizeArray = [];
-    if (size) {
-      if (Array.isArray(size)) {
-        sizeArray = size.map((s) => s.trim().toUpperCase()).filter(Boolean);
-      } else if (typeof size === "string") {
-        sizeArray = size.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean);
-      }
-    }
+   let sizeArray = [];
+
+if (size) {
+  let rawValues = Array.isArray(size) ? size : 
+                 (typeof size === "string" ? size.split(',') : [size]);
+
+  sizeArray = rawValues
+    .map(v => {
+      const trimmed = String(v).trim();
+      const num = Number(trimmed);
+      // If it's a valid integer → use number
+      if (Number.isInteger(num)) return num;
+      // Otherwise keep original cleaned string (S, M, L, XL...)
+      if (trimmed) return trimmed.toUpperCase();
+      return null;
+    })
+    .filter(Boolean);
+}
 
     // Parse specifications
     let specsMap = new Map();
