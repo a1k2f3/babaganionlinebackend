@@ -19,7 +19,7 @@ import cartRoute from "./src/app/route/cartRoute.js";
 import orderRoutes from "./src/app/route/orderRoutes.js";
 import wishlistRoutes from "./src/app/route/wishlistRoutes.js";
 import riderRoutes from "./src/app/route/riderRoute.js";
-
+import adminRoutes from './src/app/route/adminroute.js';
 // Swagger
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./src/app/Config/swagger.js";
@@ -79,6 +79,7 @@ app.use("/api/cart", cartRoute);
 app.use("/api/wishlist", wishlistRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/riders", riderRoutes);
+app.use('/api/admin', adminRoutes);
 
 /* ------------------ Error Handler ------------------ */
 app.use((err, req, res, next) => {

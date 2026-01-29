@@ -154,7 +154,6 @@ export const getAllStoreRequests = async (req, res) => {
     res.status(500).json({ error: err.message });
   } 
 };
-
 export const rejectStoreRequest = async (req, res) => {
   try {
     const request = await Store.findById(req.params.id);
