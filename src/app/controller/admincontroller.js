@@ -39,31 +39,40 @@ export const registerAdmin = async (req, res) => {
 // ── Login + "Was this you?" email every time ──
 export const loginAdmin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // Defensive check – prevents the destructuring crash
+    const body = req.body || {};
+    const { email, password } = body;
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+    if (!email || typeof email !== 'string' || !password || typeof password !== 'string') {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required (JSON format expected)',
+      });
     }
 
-    const admin = await Admin.findOne({ email });
+    // Trim & normalize
+    const cleanEmail = email.trim().toLowerCase();
+
+    const admin = await Admin.findOne({ email: cleanEmail }).select('+password');
+
     if (!admin) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
     }
 
     const isMatch = await admin.matchPassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
     }
 
-    // Update last login
     admin.lastLogin = new Date();
     await admin.save();
 
-    // Send security notification
-    const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
-    await sendLoginNotification(admin.name, admin.email, new Date(), ip);
-
-    // Generate JWT
     const token = jwt.sign(
       {
         id: admin._id,
@@ -74,17 +83,22 @@ export const loginAdmin = async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    return res.json({
+    return res.status(200).json({
+      success: true,
       token,
       admin: {
         id: admin._id,
         name: admin.name,
         email: admin.email,
-        lastLogin: admin.lastLogin,
+        role: admin.role,
+        lastLogin: admin.lastLogin.toISOString(),
       },
     });
   } catch (err) {
-    console.error('Login error:', err);
-    return res.status(500).json({ message: 'Server error' });
+    console.error('Login error:', err.message, err.stack);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+    });
   }
 };
