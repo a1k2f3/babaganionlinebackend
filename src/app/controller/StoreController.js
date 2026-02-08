@@ -239,7 +239,7 @@ export const getStoreProfile = async (req, res) => {
 
     // ✅ Correct usage of findById
     const store = await Store.findById(storeId)
-      .populate("products", "name price images status tags stock sku category");
+      .populate("products", "name price discountPrice images status tags stock sku category");
 
     if (!store) {
       return res.status(404).json({ message: "Store not found" });

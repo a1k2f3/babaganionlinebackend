@@ -68,8 +68,8 @@ export const bulkCreateProducts = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-// CREATE PRODUCT (Already updated with images)
-export const createProduct = async (req, res) => {
+  // CREATE PRODUCT (Already updated with images)
+  export const createProduct = async (req, res) => {
   try {
     const {
       name,
@@ -79,7 +79,7 @@ export const createProduct = async (req, res) => {
       currency = "RS",
       stock,
       status = "active",
-      sku,
+      sku,                // ← may be provided or not
       category,
       brand,
       tags,
@@ -106,35 +106,30 @@ export const createProduct = async (req, res) => {
     // Process uploaded files
     const files = req.files ? Object.values(req.files).flat() : [];
 
-    // Check if files were uploaded
     if (files.length === 0) {
       return res.status(400).json({ error: "At least one image is required" });
     }
 
-    // Process uploaded files (images + videos) with Cloudinary eager thumbnail support
     const uploadedImages = [];
     const uploadedVideos = [];
 
     files.forEach((file) => {
-      // Cloudinary attaches upload result to the file object
       const uploaded = file;
 
       const item = {
-        url: uploaded.secure_url || uploaded.path, // secure_url is preferred
+        url: uploaded.secure_url || uploaded.path,
         public_id: uploaded.public_id || uploaded.filename,
       };
 
-      // === VIDEO THUMBNAIL EXTRACTION ===
       if (
         file.mimetype.startsWith("video/") &&
         uploaded.eager &&
         Array.isArray(uploaded.eager) &&
         uploaded.eager[0]
       ) {
-        item.thumbnail = uploaded.eager[0].secure_url; // Auto-generated thumbnail
+        item.thumbnail = uploaded.eager[0].secure_url;
       }
 
-      // Route to images or videos based on fieldname
       if (file.fieldname === "images") {
         uploadedImages.push(item);
       } else if (file.fieldname === "videos") {
@@ -142,12 +137,12 @@ export const createProduct = async (req, res) => {
       }
     });
 
-    // Ensure at least one image
     if (uploadedImages.length === 0) {
       return res.status(400).json({ error: "At least one image is required" });
     }
 
-    // Handle tags
+    // ────────────────────────────────────────────────
+    // Tags handling (unchanged)
     let tagsArray = [];
     if (tags) {
       let tempTags = tags;
@@ -156,44 +151,39 @@ export const createProduct = async (req, res) => {
         if (tempTags.startsWith('[') && tempTags.endsWith(']')) {
           try {
             tempTags = JSON.parse(tempTags);
-          } catch (err) {
-            // If parse fails, fall back to split
-          }
+          } catch {}
         }
       }
       if (Array.isArray(tempTags)) {
-        tagsArray = tempTags.flatMap((t) => {
-          if (typeof t === "string") {
-            return t.trim() ? [t.trim()] : [];
-          }
-          return [];
-        });
+        tagsArray = tempTags.flatMap((t) =>
+          typeof t === "string" && t.trim() ? [t.trim()] : []
+        );
       } else if (typeof tempTags === "string") {
         tagsArray = tempTags.split(",").map((t) => t.trim()).filter(Boolean);
       }
     }
 
-    // Handle size array
-   let sizeArray = [];
+    // Size handling (unchanged)
+    let sizeArray = [];
+    if (size) {
+      let rawValues = Array.isArray(size)
+        ? size
+        : typeof size === "string"
+          ? size.split(',')
+          : [size];
 
-if (size) {
-  let rawValues = Array.isArray(size) ? size : 
-                 (typeof size === "string" ? size.split(',') : [size]);
+      sizeArray = rawValues
+        .map(v => {
+          const trimmed = String(v).trim();
+          const num = Number(trimmed);
+          if (Number.isInteger(num)) return num;
+          if (trimmed) return trimmed.toUpperCase();
+          return null;
+        })
+        .filter(Boolean);
+    }
 
-  sizeArray = rawValues
-    .map(v => {
-      const trimmed = String(v).trim();
-      const num = Number(trimmed);
-      // If it's a valid integer → use number
-      if (Number.isInteger(num)) return num;
-      // Otherwise keep original cleaned string (S, M, L, XL...)
-      if (trimmed) return trimmed.toUpperCase();
-      return null;
-    })
-    .filter(Boolean);
-}
-
-    // Parse specifications
+    // Specifications handling (unchanged)
     let specsMap = new Map();
     if (specifications) {
       try {
@@ -214,7 +204,7 @@ if (size) {
       }
     }
 
-    // Validate discountPrice
+    // Discount price validation (unchanged)
     const finalDiscountPrice = discountPrice ? Number(discountPrice) : undefined;
     if (
       finalDiscountPrice !== undefined &&
@@ -225,7 +215,8 @@ if (size) {
       });
     }
 
-    // Create product
+    // ────────────────────────────────────────────────
+    // CREATE PRODUCT FIRST → we need _id to set SKU
     const product = await Product.create({
       name: name.trim(),
       description: description?.trim() || "",
@@ -234,12 +225,13 @@ if (size) {
       currency,
       stock: Number(stock),
       status,
-      sku: sku?.trim().toUpperCase() || null,
+      // SKU logic: use provided sku if valid, else use _id after creation
+      sku: sku?.trim().toUpperCase() || null, // temporary – will override below if null
       category,
       brand: brand || null,
       tags: tagsArray,
       images: uploadedImages,
-      videos: uploadedVideos, // Now includes thumbnail for each video
+      videos: uploadedVideos,
       thumbnail: uploadedImages[0]?.url || "",
       specifications: specsMap,
       warranty: warranty?.trim() || null,
@@ -247,7 +239,13 @@ if (size) {
       ageGroup: ageGroup || null,
     });
 
-    // Update store (brand) with new product
+    // If no SKU was provided → set it to the product _id (string)
+    if (!sku || !sku.trim()) {
+      product.sku = product._id.toString();
+      await product.save(); // Important: persist the change
+    }
+
+    // Update store/brand with new product
     if (brand) {
       await Store.findByIdAndUpdate(brand, { $push: { products: product._id } });
     }
@@ -738,7 +736,7 @@ export const getProductsByBrand = async (req, res) => {
   brand: new mongoose.Types.ObjectId(brandId),
   status: "active",
 })
-  .select("name price images stock sku category tags")
+  .select("name price discountPrice images stock sku category tags")
   .populate("category", "name")
   .populate("tags", "name color");
     // 4. Return empty array instead of 404 (better for frontend)
