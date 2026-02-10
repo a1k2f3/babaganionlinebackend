@@ -69,17 +69,17 @@ export const bulkCreateProducts = async (req, res) => {
   }
 };
   // CREATE PRODUCT (Already updated with images)
-  export const createProduct = async (req, res) => {
+export const createProduct = async (req, res) => {
   try {
     const {
       name,
       description,
       price,
       discountPrice,
-      currency = "RS",
+      currency = "Rs",
       stock,
       status = "active",
-      sku,                // ← may be provided or not
+      sku,           // optional – custom SKU from client
       category,
       brand,
       tags,
@@ -89,174 +89,150 @@ export const bulkCreateProducts = async (req, res) => {
       ageGroup,
     } = req.body;
 
-    // Validate required fields
+    // ── Basic Validation ──
     if (!name?.trim()) {
-      return res.status(400).json({ error: "Product name is required" });
+      return res.status(400).json({ success: false, error: "Product name is required" });
     }
     if (!price || isNaN(price) || Number(price) <= 0) {
-      return res.status(400).json({ error: "Valid price is required" });
+      return res.status(400).json({ success: false, error: "Valid price is required" });
     }
-    if (!stock || isNaN(stock) || Number(stock) < 0) {
-      return res.status(400).json({ error: "Valid stock quantity is required" });
+    if (stock == null || isNaN(stock) || Number(stock) < 0) {
+      return res.status(400).json({ success: false, error: "Valid stock quantity is required" });
     }
     if (!category) {
-      return res.status(400).json({ error: "Category is required" });
+      return res.status(400).json({ success: false, error: "Category is required" });
     }
 
-    // Process uploaded files
+    // ── File handling (images & videos) ──
     const files = req.files ? Object.values(req.files).flat() : [];
-
     if (files.length === 0) {
-      return res.status(400).json({ error: "At least one image is required" });
+      return res.status(400).json({ success: false, error: "At least one image is required" });
     }
 
     const uploadedImages = [];
     const uploadedVideos = [];
 
     files.forEach((file) => {
-      const uploaded = file;
-
       const item = {
-        url: uploaded.secure_url || uploaded.path,
-        public_id: uploaded.public_id || uploaded.filename,
+        url: file.secure_url || file.path,
+        public_id: file.public_id || file.filename,
       };
 
-      if (
-        file.mimetype.startsWith("video/") &&
-        uploaded.eager &&
-        Array.isArray(uploaded.eager) &&
-        uploaded.eager[0]
-      ) {
-        item.thumbnail = uploaded.eager[0].secure_url;
+      if (file.mimetype.startsWith("video/") && file.eager?.[0]?.secure_url) {
+        item.thumbnail = file.eager[0].secure_url;
       }
 
-      if (file.fieldname === "images") {
-        uploadedImages.push(item);
-      } else if (file.fieldname === "videos") {
-        uploadedVideos.push(item);
-      }
+      if (file.fieldname === "images") uploadedImages.push(item);
+      if (file.fieldname === "videos") uploadedVideos.push(item);
     });
 
     if (uploadedImages.length === 0) {
-      return res.status(400).json({ error: "At least one image is required" });
+      return res.status(400).json({ success: false, error: "At least one image is required" });
     }
 
-    // ────────────────────────────────────────────────
-    // Tags handling (unchanged)
+    // ── Tags handling ──
     let tagsArray = [];
     if (tags) {
       let tempTags = tags;
       if (typeof tempTags === "string") {
         tempTags = tempTags.trim();
-        if (tempTags.startsWith('[') && tempTags.endsWith(']')) {
+        if (tempTags.startsWith("[") && tempTags.endsWith("]")) {
           try {
             tempTags = JSON.parse(tempTags);
           } catch {}
         }
       }
       if (Array.isArray(tempTags)) {
-        tagsArray = tempTags.flatMap((t) =>
-          typeof t === "string" && t.trim() ? [t.trim()] : []
-        );
+        tagsArray = tempTags.flatMap(t => (typeof t === "string" && t.trim() ? [t.trim()] : []));
       } else if (typeof tempTags === "string") {
-        tagsArray = tempTags.split(",").map((t) => t.trim()).filter(Boolean);
+        tagsArray = tempTags.split(",").map(t => t.trim()).filter(Boolean);
       }
     }
 
-    // Size handling (unchanged)
+    // ── Size handling ──
     let sizeArray = [];
     if (size) {
-      let rawValues = Array.isArray(size)
-        ? size
-        : typeof size === "string"
-          ? size.split(',')
-          : [size];
-
+      const rawValues = Array.isArray(size) ? size : (typeof size === "string" ? size.split(",") : [size]);
       sizeArray = rawValues
         .map(v => {
           const trimmed = String(v).trim();
           const num = Number(trimmed);
-          if (Number.isInteger(num)) return num;
-          if (trimmed) return trimmed.toUpperCase();
-          return null;
+          return Number.isInteger(num) ? num : (trimmed ? trimmed.toUpperCase() : null);
         })
         .filter(Boolean);
     }
 
-    // Specifications handling (unchanged)
+    // ── Specifications handling ──
     let specsMap = new Map();
     if (specifications) {
       try {
-        const parsed =
-          typeof specifications === "string"
-            ? JSON.parse(specifications)
-            : specifications;
-
-        if (typeof parsed === "object" && parsed !== null) {
+        const parsed = typeof specifications === "string" ? JSON.parse(specifications) : specifications;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
           Object.entries(parsed).forEach(([key, value]) => {
             if (typeof value === "string" || typeof value === "number") {
               specsMap.set(key.trim(), String(value).trim());
             }
           });
         }
-      } catch (err) {
-        return res.status(400).json({ error: "Invalid specifications format" });
+      } catch {
+        return res.status(400).json({ success: false, error: "Invalid specifications format" });
       }
     }
 
-    // Discount price validation (unchanged)
+    // ── Discount validation ──
     const finalDiscountPrice = discountPrice ? Number(discountPrice) : undefined;
-    if (
-      finalDiscountPrice !== undefined &&
-      (isNaN(finalDiscountPrice) || finalDiscountPrice >= Number(price))
-    ) {
-      return res.status(400).json({
-        error: "Discount price must be less than original price",
-      });
+    if (finalDiscountPrice !== undefined && (isNaN(finalDiscountPrice) || finalDiscountPrice >= Number(price))) {
+      return res.status(400).json({ success: false, error: "Discount price must be less than original price" });
     }
 
-    // ────────────────────────────────────────────────
-    // CREATE PRODUCT FIRST → we need _id to set SKU
-    const product = await Product.create({
-      name: name.trim(),
-      description: description?.trim() || "",
-      price: Number(price),
-      discountPrice: finalDiscountPrice,
-      currency,
-      stock: Number(stock),
-      status,
-      // SKU logic: use provided sku if valid, else use _id after creation
-      sku: sku?.trim().toUpperCase() || null, // temporary – will override below if null
-      category,
-      brand: brand || null,
-      tags: tagsArray,
-      images: uploadedImages,
-      videos: uploadedVideos,
-      thumbnail: uploadedImages[0]?.url || "",
-      specifications: specsMap,
-      warranty: warranty?.trim() || null,
-      size: sizeArray,
-      ageGroup: ageGroup || null,
-    });
+// Prepare product data – IMPORTANT: do NOT include sku if not provided
+const productData = {
+  name: name.trim(),
+  description: description?.trim() || "",
+  price: Number(price),
+  discountPrice: finalDiscountPrice,
+  currency,
+  stock: Number(stock),
+  status,
+  category,
+  brand: brand || null,
+  tags: tagsArray,
+  images: uploadedImages,
+  videos: uploadedVideos,
+  thumbnail: uploadedImages[0]?.url || "",
+  specifications: specsMap,
+  warranty: warranty?.trim() || null,
+  size: sizeArray,
+  ageGroup: ageGroup || null,
+};
 
-    // If no SKU was provided → set it to the product _id (string)
-    if (!sku || !sku.trim()) {
-      product.sku = product._id.toString();
-      await product.save(); // Important: persist the change
-    }
+// If custom sku is provided → add it now (will be checked for uniqueness)
+let isCustomSku = false;
+if (sku && String(sku).trim().length > 0) {
+  isCustomSku = true;
+  productData.sku = String(sku).trim().toUpperCase();
+}
 
-    // Update store/brand with new product
+const product = await Product.create(productData);
+
+// If no custom sku → ADD the field AFTER creation
+if (!isCustomSku) {
+  product.sku = product._id.toString();  // e.g. "67a123b456c789def0123456"
+  // Alternative: product.sku = `P-${product._id.toString().slice(-8)}`; // shorter if you prefer
+  await product.save();
+}
+    // ── Update brand (if provided) ──
     if (brand) {
       await Store.findByIdAndUpdate(brand, { $push: { products: product._id } });
     }
 
-    // Populate related fields
+    // ── Populate references ──
     await product.populate([
       { path: "category", select: "name slug" },
       { path: "brand", select: "name storeName logo" },
-      { path: "tags", select: "name slug color" },
     ]);
 
+    // ── Success response ──
     return res.status(201).json({
       success: true,
       message: "Product created successfully",
@@ -264,6 +240,14 @@ export const bulkCreateProducts = async (req, res) => {
     });
   } catch (error) {
     console.error("Product creation error:", error);
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        error: "Duplicate SKU detected. Please provide a unique SKU or leave it blank (auto-generated from ID).",
+      });
+    }
+
     return res.status(500).json({
       success: false,
       error: error.message || "Internal server error",
