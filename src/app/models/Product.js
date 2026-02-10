@@ -107,7 +107,7 @@
     productSchema.index({ name: "text", description: "text" });
     productSchema.index({ category: 1 });
     productSchema.index({ tags: 1 });
-    // productSchema.index({ sku: 1 }); // Ensure SKU is indexed
+  productSchema.index({ sku: 1 }, { unique: true, sparse: true });
     productSchema.index({ status: 1 });
     productSchema.index({ price: 1 });
     productSchema.index({ discountPrice: 1 });
