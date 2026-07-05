@@ -241,15 +241,39 @@ export const updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
 
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Update order status
     order.status = status;
+
+    // Business logic: If order is Delivered → Mark payment as Paid
+    if (order.status === "Delivered") {
+      order.paymentStatus = "Paid";
+    }
+
+    // Optional: If order is Cancelled and payment was not yet done, keep it Pending/Failed
+    if (order.status === "Cancelled" && order.paymentStatus === "Pending") {
+      order.paymentStatus = "Failed"; // or keep as Pending based on your business rule
+    }
+
     await order.save();
 
-    res.json({ message: "Order status updated", order });
+    res.json({
+      message: "Order status updated successfully",
+      order
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ 
+      message: "Failed to update order status",
+      error: error.message 
+    });
   }
 };
 
