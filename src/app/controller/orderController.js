@@ -241,15 +241,51 @@ export const updateOrderStatus = async (req, res) => {
     const { orderId } = req.params;
     const { status } = req.body;
 
-    const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!status) {
+      return res.status(400).json({ message: "Status is required" });
+    }
 
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    const oldStatus = order.status;
+    const oldPaymentStatus = order.paymentStatus;
+
+    // Update order status
     order.status = status;
+
+    // === Business Logic ===
+    if (status === "Delivered") {
+      order.paymentStatus = "Paid";
+    } 
+    else if (status === "Cancelled") {
+      // Only change to Failed if it hasn't been paid yet
+      if (["Pending", "Unpaid"].includes(order.paymentStatus)) {
+        order.paymentStatus = "Failed";
+      }
+    }
+    // Add more rules as needed...
+
     await order.save();
 
-    res.json({ message: "Order status updated", order });
+    // Optional: return more informative response for debugging
+    res.json({
+      message: "Order status updated successfully",
+      order,
+      changes: {
+        status: { from: oldStatus, to: status },
+        paymentStatus: { from: oldPaymentStatus, to: order.paymentStatus }
+      }
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Update order status error:", error);
+    res.status(500).json({ 
+      message: "Failed to update order status",
+      error: error.message 
+    });
   }
 };
 
