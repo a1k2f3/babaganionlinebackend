@@ -23,7 +23,7 @@ import orderRoutes from "./src/app/route/orderRoutes.js";
 import wishlistRoutes from "./src/app/route/wishlistRoutes.js";
 import riderRoutes from "./src/app/route/riderRoute.js";
 import adminRoutes from './src/app/route/adminroute.js';
-
+import guestOrderRoutes from './src/app/route/guestOrderRoutes.js'; // Import the new guest order routes
 // Swagger
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./src/app/Config/swagger.js";
@@ -91,6 +91,7 @@ function createApp() {
   app.use("/api/orders", orderRoutes);
   app.use("/api/riders", riderRoutes);
   app.use('/api/admin', adminRoutes);
+  app.use('/api/guest-orders', guestOrderRoutes); // Use the new guest order routes
 
   /* ------------------ Error Handler ------------------ */
   app.use((err, req, res, next) => {
