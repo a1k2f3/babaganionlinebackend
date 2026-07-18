@@ -26,33 +26,45 @@ export const createGuestOrder = async (req, res) => {
       paymentMethod,
     } = req.body;
 
+    // Validation
     if (!guestInfo?.email || !guestInfo?.phone || !items || items.length === 0) {
-      return res.status(400).json({ message: "Missing required guest details or cart items." });
+      return res.status(400).json({ 
+        success: false,
+        message: "Missing required guest details or cart items." 
+      });
     }
 
-    // Format shippingAddress to match schema
+    if (!shippingAddress) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Shipping address is required." 
+      });
+    }
+
+    // Format shipping address
     const formattedShippingAddress = {
-      name: shippingAddress.name,
+      name: shippingAddress.name || `${guestInfo.firstName || ''} ${guestInfo.lastName || ''}`.trim(),
       email: guestInfo.email,
-      address: `${shippingAddress.street} ${shippingAddress.apartment ? `, ${shippingAddress.apartment}` : ''}`.trim(),
+      address: `${shippingAddress.street || ''} ${shippingAddress.apartment ? `, ${shippingAddress.apartment}` : ''}`.trim(),
       city: shippingAddress.city,
       pincode: shippingAddress.postalCode || shippingAddress.pincode,
-      country: shippingAddress.country,
+      country: shippingAddress.country || 'India',
     };
 
-    // Format items
+    // Format items with better ObjectId handling
     const formattedItems = items.map(item => ({
-      productId: item.productId,
-      storeId: item.storeId && item.storeId.length === 24 
-        ? new mongoose.Types.ObjectId(item.storeId) 
+      productId: new mongoose.Types.ObjectId(item.productId),
+      storeId: item.storeId && /^[0-9a-fA-F]{24}$/.test(item.storeId)
+        ? new mongoose.Types.ObjectId(item.storeId)
         : new mongoose.Types.ObjectId("67a1b2c3d4e5f67890123456"), // Default storeId
       title: item.title || item.name,
       image: item.image,
       size: item.size,
-      quantity: item.quantity,
-      price: item.price,
+      quantity: Number(item.quantity),
+      price: Number(item.price),
     }));
 
+    // Create and save order first
     const newGuestOrder = new GuestOrder({
       guestInfo,
       items: formattedItems,
@@ -66,16 +78,23 @@ export const createGuestOrder = async (req, res) => {
 
     const savedOrder = await newGuestOrder.save();
 
-    // ==================== SEND EMAILS ====================
+    console.log(`Guest order created successfully: ${savedOrder._id}`);
 
-    // 1. Thank you email to customer
-    await sendGuestThankYouEmail(savedOrder);
-
-    // 2. New order notification to admin
-    await sendNewOrderNotificationToAdmin(savedOrder);
+    // ==================== SEND EMAILS (Background) ====================
+    
+    // Fire and forget - prevents timeout issues
+    Promise.all([
+      sendGuestThankYouEmail(savedOrder).catch(err => {
+        console.error("Failed to send thank you email:", err);
+      }),
+      sendNewOrderNotificationToAdmin(savedOrder).catch(err => {
+        console.error("Failed to send admin notification:", err);
+      })
+    ]);
 
     // ====================================================
 
+    // Respond immediately to client
     res.status(201).json({
       success: true,
       message: "Guest order placed successfully!",
@@ -83,12 +102,18 @@ export const createGuestOrder = async (req, res) => {
       trackingToken: savedOrder.trackingToken,
       order: savedOrder,
     });
+
   } catch (error) {
     console.error("Guest Order Error:", error);
+
     res.status(500).json({
+      success: false,
       message: "Server error placing guest order.",
       error: error.message,
-      validationErrors: error.errors
+      // Only send validation errors in development
+      ...(process.env.NODE_ENV === 'development' && { 
+        validationErrors: error.errors 
+      })
     });
   }
 };
