@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import GuestOrder from "../models/GuestOrder.js"; // Adjust path to your schema file
-
+import { sendGuestThankYouEmail, sendNewOrderNotificationToAdmin } from '../utils/emailService.js';
 /**
  * @desc    Create a new guest order from localCart data
  * @route   POST /api/guest-orders/checkout
@@ -40,7 +40,7 @@ export const createGuestOrder = async (req, res) => {
       country: shippingAddress.country,
     };
 
-    // FIXED: Cast storeId to ObjectId safely
+    // Format items
     const formattedItems = items.map(item => ({
       productId: item.productId,
       storeId: item.storeId && item.storeId.length === 24 
@@ -65,6 +65,16 @@ export const createGuestOrder = async (req, res) => {
     });
 
     const savedOrder = await newGuestOrder.save();
+
+    // ==================== SEND EMAILS ====================
+
+    // 1. Thank you email to customer
+    await sendGuestThankYouEmail(savedOrder);
+
+    // 2. New order notification to admin
+    await sendNewOrderNotificationToAdmin(savedOrder);
+
+    // ====================================================
 
     res.status(201).json({
       success: true,
