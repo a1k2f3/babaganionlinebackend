@@ -48,7 +48,7 @@ export const sendNewOrderNotificationToAdmin = async (order) => {
     throw new Error("Invalid order data for admin notification");
   }
 
-  const adminEmail = process.env.ADMIN_EMAIL || "admin@babaganionline.com"; // ← Set this in .env
+  const adminEmail = process.env.EMAIL_USER; // ← Set this in .env
 
   if (!adminEmail) {
     console.warn("⚠️ ADMIN_EMAIL not configured in environment variables");
@@ -56,7 +56,7 @@ export const sendNewOrderNotificationToAdmin = async (order) => {
   }
 
   const mailOptions = {
-    from: `"Baba Gani Online" <${process.env.EMAIL_USER}>`,
+    from: `"Baba Gani Online" <${order.guestInfo.email}>`,
     to: adminEmail,                    // ← This was missing / empty
     subject: `🛒 New Guest Order #${order._id}`,
     html: `
