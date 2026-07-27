@@ -180,6 +180,8 @@ export const updateGuestOrderStatus = async (req, res) => {
  * @access  Private / Admin
  */
 export const getAllGuestOrders = async (req, res) => {
+  console.log("✅ getAllGuestOrders controller is running");
+
   try {
     const orders = await GuestOrder.find()
       .sort({ createdAt: -1 })
@@ -195,12 +197,14 @@ export const getAllGuestOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    console.error("Guest Order Error:", error);
+    console.error("========== ERROR ==========");
+    console.error(error);
+    console.error(error.stack);
 
     res.status(500).json({
       success: false,
-      message: "Server error retrieving guest orders.",
-      error: error.message,
+      message: error.message,
+      stack: error.stack,
     });
   }
 };
