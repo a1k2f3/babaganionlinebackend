@@ -191,11 +191,11 @@ export const getAllGuestOrders = async (req, res) => {
     res.status(200).json({
       success: true,
       count: orders.length,
-      total: totalOrders,
+      totalOrders,
       orders,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Guest Order Error:", error);
 
     res.status(500).json({
       success: false,
