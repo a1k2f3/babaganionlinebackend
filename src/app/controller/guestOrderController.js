@@ -181,17 +181,11 @@ export const updateGuestOrderStatus = async (req, res) => {
  */
 export const getAllGuestOrders = async (req, res) => {
   try {
-   
-
-    // Fetch orders sorted by the newest first
     const orders = await GuestOrder.find()
       .sort({ createdAt: -1 })
-      .skip(skip)
-     
       .populate("items.productId", "title price")
       .populate("items.storeId", "name");
 
-    // Get total count for frontend pagination calculations
     const totalOrders = await GuestOrder.countDocuments();
 
     res.status(200).json({
@@ -201,9 +195,12 @@ export const getAllGuestOrders = async (req, res) => {
       orders,
     });
   } catch (error) {
-    res.status(500).json({ 
-      message: "Server error retrieving guest orders.", 
-      error: error.message 
+    console.error(error);
+
+    res.status(500).json({
+      success: false,
+      message: "Server error retrieving guest orders.",
+      error: error.message,
     });
   }
 };
