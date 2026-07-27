@@ -181,16 +181,13 @@ export const updateGuestOrderStatus = async (req, res) => {
  */
 export const getAllGuestOrders = async (req, res) => {
   try {
-    // Optional pagination queries (defaults to page 1, 10 items per page)
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+   
 
     // Fetch orders sorted by the newest first
     const orders = await GuestOrder.find()
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(limit)
+     
       .populate("items.productId", "title price")
       .populate("items.storeId", "name");
 
@@ -200,11 +197,7 @@ export const getAllGuestOrders = async (req, res) => {
     res.status(200).json({
       success: true,
       count: orders.length,
-      pagination: {
-        totalOrders,
-        currentPage: page,
-        totalPages: Math.ceil(totalOrders / limit),
-      },
+      total: totalOrders,
       orders,
     });
   } catch (error) {
